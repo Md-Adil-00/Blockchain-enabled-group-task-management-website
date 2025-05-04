@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Log</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            text-decoration: none;
+            outline: none;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        :root {
+            --primary-gradient: radial-gradient(150% 56% at 50% 100%, #0E7872 0%, #000000 100%);
+            --bg-color: #080808;
+            --second-bg-color: #101010;
+            --text-color: #ffffff;
+            --main-color: #11BFB5;
+        }
+
+        html {
+            overflow-x: hidden;
+            font-size: 18pt;
+        }
+
+        body {
+            background: var(--primary-gradient);
+            background-attachment: fixed;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: var(--text-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            height: 80vh;
+            scrollbar-width: thin;
+        }
+
+        li {
+            background: var(--second-bg-color);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-wrap: break-word;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: var(--main-color);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            align-self: flex-start;
+        }
+
+        button:hover {
+            background-color: #0E7872;
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        a {
+            color: var(--main-color);
+            transition: color 0.3s;
+            text-align: center;
+            display: block;
+            margin-top: 20px;
+        }
+
+        a:hover {
+            color: #0E7872;
+            text-decoration: underline;
+        }
+
+        hr {
+            border: 0.5px solid #333;
+            margin: 10px 0;
+        }
+
+        #loading {
+            color: var(--main-color);
+            text-align: center;
+            padding: 10px;
+            display: none;
+        }
+
+    </style>
+    <script>
+        let tasks = [];
+        let page = 1;
+        const tasksPerPage = 5;
+        let isLoading = false;
+
+        async function fetchTasks() {
+            if (isLoading) return; 
+            
+            isLoading = true;
+            const response = await fetch(`/tasks?page=${page}&limit=${tasksPerPage}`);
+            const data = await response.json();
+            
+            
+            const newTasks = data.filter(task => !tasks.some(existingTask => existingTask.index === task.index));
+
+            tasks = tasks.concat(newTasks); 
+            page++;
+            renderTasks();
+            isLoading = false;
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = tasks.map(block => `
+                <li>
+                    <strong>Task:</strong> ${block.task} <br>
+                    <strong>Hash:</strong> ${block.hash} <br>
+                    <strong>Completed:</strong> ${block.completed ? "✅ Yes" : "❌ No"} <br>
+                    <strong>Index:</strong> ${block.index} <br>
+                    <strong>Timestamp:</strong> ${new Date(block.timestamp * 1000).toLocaleString()} <br>
+                    <button onclick="markComplete(${block.index})" ${block.completed ? 'disabled' : ''}>
+                        Mark as Complete
+                    </button>
+                </li>
+                <hr>
+            `).join('');
+        }
+
+        async function markComplete(index) {
+            await fetch(`/tasks/${index}`, {
+                method: 'PUT'
+            });
+            fetchTasks();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchTasks();
+            const taskList = document.getElementById('taskList');
+            
+            taskList.addEventListener('scroll', () => {
+                if (taskList.scrollTop + taskList.clientHeight >= taskList.scrollHeight) {
+                    fetchTasks();
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Task Log</h1>
+    <ul id="taskList"></ul>
+    <p id="loading">Loading more tasks...</p>
+    <br>
+    <a href="/">Go Back</a> 
+</body>
+</html>
